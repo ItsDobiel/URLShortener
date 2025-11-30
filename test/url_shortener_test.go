@@ -203,7 +203,10 @@ func newWebDriver() (selenium.WebDriver, error) {
 	caps := selenium.Capabilities{
 		"browserName": "firefox",
 		"moz:firefoxOptions": map[string]any{
-			"args": []string{"--width=1920", "--height=1080"},
+			"args": []string{
+				"--headless",
+				"--width=1920",
+				"--height=1080"},
 			"prefs": map[string]any{
 				"dom.webdriver.enabled":      false,
 				"useAutomationExtension":     false,
