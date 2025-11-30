@@ -4,8 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
+
+	"github.com/ItsDobiel/URLShortener/internal/config"
 
 	"github.com/cucumber/godog"
 	"github.com/tebeka/selenium"
@@ -13,9 +19,11 @@ import (
 
 // TestContext holds the state for BDD tests
 type TestContext struct {
-	webDriver     selenium.WebDriver
-	baseURL       string
-	lastShortCode string
+	webDriver      selenium.WebDriver
+	baseURL        string
+	lastShortCode  string
+	geckoDriverCmd *exec.Cmd
+	serverCmd      *exec.Cmd
 }
 
 var testCtx *TestContext
@@ -29,6 +37,24 @@ func TestFeatures(t *testing.T) {
 		baseURL: "http://localhost:8080",
 	}
 
+	fmt.Println(" Building application...")
+	if err := buildApplication(); err != nil {
+		t.Fatalf("Failed to build application: %v", err)
+	}
+
+	fmt.Println(" Starting application server...")
+	if err := startServer(); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
+	defer stopServer()
+
+	fmt.Println(" Starting GeckoDriver...")
+	if err := startGeckoDriver(); err != nil {
+		t.Fatalf("Failed to start GeckoDriver: %v", err)
+	}
+	defer stopGeckoDriver()
+
+	// Wait for GeckoDriver to be ready
 	fmt.Println(" Launching Firefox browser...")
 	driver, err := newWebDriver()
 	if err != nil {
@@ -41,6 +67,17 @@ func TestFeatures(t *testing.T) {
 	}()
 
 	fmt.Println(" Test environment ready")
+
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+
+		fmt.Println("Shutting down GeckoDriver and server...")
+		stopServer()
+		stopGeckoDriver()
+		os.Exit(1)
+	}()
 
 	// Configure and run godog test suite
 	suite := godog.TestSuite{
@@ -57,6 +94,76 @@ func TestFeatures(t *testing.T) {
 	}
 
 	fmt.Println("=== All Tests Complete ===")
+}
+
+func startGeckoDriver() error {
+	geckoPath, err := exec.LookPath("geckodriver")
+	if err != nil {
+		return fmt.Errorf("geckodriver not found in PATH: %w (install from https://github.com/mozilla/geckodriver)", err)
+	}
+
+	testCtx.geckoDriverCmd = exec.Command(geckoPath)
+
+	if err := testCtx.geckoDriverCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start geckodriver: %w", err)
+	}
+	time.Sleep(3 * time.Millisecond) // Need some time for the driver to execute!
+	fmt.Printf(" GeckoDriver started (PID: %d, Port: 4444(Default)\n", testCtx.geckoDriverCmd.Process.Pid)
+	return nil
+}
+
+func stopGeckoDriver() {
+	if testCtx.geckoDriverCmd != nil && testCtx.geckoDriverCmd.Process != nil {
+		fmt.Println(" Stopping GeckoDriver...")
+		testCtx.geckoDriverCmd.Process.Kill()
+		testCtx.geckoDriverCmd.Wait()
+		fmt.Println(" GeckoDriver stopped")
+	}
+}
+
+func buildApplication() error {
+	buildCmd := exec.Command("go", "build", "-o", "server", "../cmd/server/main.go")
+	buildCmd.Dir = "."
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+
+	fmt.Println(" Application built successfully")
+	return nil
+}
+
+func startServer() error {
+	os.Setenv("TEMPLATES_DIR", "../templates")
+
+	testCtx.serverCmd = exec.Command("./server")
+	testCtx.serverCmd.Dir = "."
+
+	if err := testCtx.serverCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+
+	fmt.Printf(" Server started (PID: %d)\n", testCtx.serverCmd.Process.Pid)
+	return nil
+}
+
+func stopServer() {
+	if testCtx.serverCmd != nil && testCtx.serverCmd.Process != nil {
+		fmt.Println(" Stopping server...")
+		testCtx.serverCmd.Process.Kill()
+		testCtx.serverCmd.Wait()
+		fmt.Println(" Server stopped")
+	}
+
+	os.Remove("./server")
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Errorf("Failed to load configuration: %v", err)
+	}
+	os.RemoveAll(cfg.DatabasePath)
+	os.Setenv("TEMPLATES_DIR", "")
 }
 
 func initializeScenario(ctx *godog.ScenarioContext) {

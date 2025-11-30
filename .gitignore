@@ -38,4 +38,4 @@ go.work.sum
 
 
 # Server binary
-st_server
+server

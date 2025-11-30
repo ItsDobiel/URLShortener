@@ -20,7 +20,16 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	if err := database.Initialize(cfg.DatabasePath); err != nil {
+	if _, err := os.Stat(cfg.DatabasePath); os.IsNotExist(err) {
+		// Directory doesn't exist, create it
+		err := os.MkdirAll(cfg.DatabasePath, 0755)
+		if err != nil {
+			log.Fatalf("failed to create directory: %v", err)
+		}
+		log.Printf("Directory created: %s\n", cfg.DatabasePath)
+	}
+
+	if err := database.Initialize(cfg.DatabasePath + "/urlshortener.db"); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer func() {

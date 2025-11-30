@@ -26,7 +26,7 @@ func Load() (*Config, error) {
 		ServerPort:   getEnv("SERVER_PORT", "8080"),
 		ServerHost:   getEnv("SERVER_HOST", "localhost"),
 		ShortDomain:  getEnv("SHORT_DOMAIN", "localhost:8080"),
-		DatabasePath: getEnv("DATABASE_PATH", "./database/urlshortener.db"),
+		DatabasePath: getEnv("DATABASE_PATH", "./database"),
 		TemplatesDir: getEnv("TEMPLATES_DIR", "templates"),
 	}
 
