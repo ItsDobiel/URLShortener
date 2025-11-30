@@ -1,0 +1,233 @@
+:root {
+    --purple-brightest: #625984;
+    --purple-bright: #433c68;
+    --purple-medium: #3a3053;
+    --purple-dark: #18132a;
+    --text-light: #e8e6f0;
+    --text-medium: #b8b5c8;
+    --pastel-red: #ff9999;
+    --pastel-blue: #99ccff;
+    --pastel-blue-hover: #66b3ff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--purple-dark);
+    color: var(--text-light);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.container {
+    background-color: var(--purple-medium);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 600px;
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--purple-bright);
+}
+
+h1 {
+    color: var(--text-light);
+    margin-bottom: 30px;
+    text-align: center;
+    font-size: 2.5em;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+    color: var(--purple-brightest);
+    margin-bottom: 15px;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+form {
+    margin-bottom: 30px;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-medium);
+    font-weight: 500;
+    font-size: 1em;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: var(--purple-dark);
+    border: 2px solid var(--purple-bright);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-size: 16px;
+    transition:
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--purple-brightest);
+    box-shadow: 0 0 0 3px rgba(98, 89, 132, 0.2);
+}
+
+input[type="text"]::placeholder {
+    color: var(--text-medium);
+    opacity: 0.6;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--purple-brightest);
+    color: var(--text-light);
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition:
+        background-color 0.3s ease,
+        transform 0.1s ease,
+        box-shadow 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+button:hover {
+    background-color: #7269a0;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    background-color: var(--purple-bright);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.result {
+    background-color: var(--purple-dark);
+    border: 2px solid var(--purple-brightest);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    animation: fadeIn 0.4s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.url-display {
+    background-color: var(--purple-bright);
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    word-break: break-all;
+    border: 1px solid var(--purple-medium);
+}
+
+.url-display:last-child {
+    margin-bottom: 0;
+}
+
+.url-label {
+    color: var(--text-medium);
+    font-size: 0.85em;
+    margin-bottom: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.url-value {
+    color: var(--text-light);
+    font-size: 1.1em;
+    font-family: "Courier New", Courier, monospace;
+    word-wrap: break-word;
+}
+
+.url-value a {
+    color: var(--pastel-blue);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.url-value a:hover {
+    color: var(--pastel-blue-hover);
+    text-decoration: underline;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    color: var(--text-medium);
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 30px 20px;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    h2 {
+        font-size: 1.3em;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 20px 15px;
+    }
+
+    h1 {
+        font-size: 1.8em;
+    }
+
+    input[type="text"],
+    button {
+        font-size: 14px;
+        padding: 12px;
+    }
+
+    .url-value {
+        font-size: 1em;
+    }
+}

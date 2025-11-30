@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>URL Shortener</title>
+        <link rel="stylesheet" href="/static/css/main.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔗 URL Shortener</h1>
+
+            <form action="/shorten" method="POST">
+                <div class="input-group">
+                    <label for="url">Enter your long URL:</label>
+                    <input
+                        type="text"
+                        id="url"
+                        name="url"
+                        placeholder="https://github.com/ItsDobiel/URLShortener/blob/main/README.md"
+                        required
+                    />
+                </div>
+                <button type="submit" id="submit">Shorten URL</button>
+            </form>
+
+            {{if .ShortURL}}
+            <div id="result">
+                <h2>✨ Success!</h2>
+                <div class="url-display">
+                    <div class="url-label">Short URL:</div>
+                    <div class="url-value">
+                        <a id="shortened" href="{{.ShortURL}}" target="_blank"
+                            >{{.ShortURL}}</a
+                        >
+                    </div>
+                </div>
+                <div class="url-display">
+                    <div class="url-label">Original URL:</div>
+                    <div class="url-value">{{.OriginalURL}}</div>
+                </div>
+            </div>
+            {{end}}
+
+            <div class="footer">Use for educational purposes only.</div>
+        </div>
+    </body>
+</html>

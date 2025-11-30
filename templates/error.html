@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Error - URL Shortener</title>
+        <link rel="stylesheet" href="/static/css/error.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h1>⚠️</h1>
+            <h2>Oops! Something went wrong</h2>
+
+            <div class="error-message">
+                <p>{{.Error}}</p>
+                {{if .StatusCode}}
+                <p class="status-code">Error Code: {{.StatusCode}}</p>
+                {{end}}
+            </div>
+
+            <a href="/">← Back to Home</a>
+
+            <div class="footer">Use for educational purposes only.</div>
+        </div>
+    </body>
+</html>
