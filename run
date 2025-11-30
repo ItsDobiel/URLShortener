@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SOURCE_ENTRY=cmd/server/main.go
+BIN=st_server
+
+BLUE="\033[0;34m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+RESET="\033[0m"
+
+## help: Display this help message
+help(){
+    echo -e "${BLUE}Available Commands${RESET}"
+    grep -E '^##' run | sed 's/## /    /'
+}
+
+## install-deps: Download Go module dependencies
+install_deps(){
+    go mod download
+    go mod verify
+}
+
+## build: Build the application binary
+build(){
+    mkdir -p ./database
+    echo -e "${BLUE}Building binaries...${RESET}"
+    go build -o ./${BIN} ./${SOURCE_ENTRY} && echo -e "${GREEN}Build complete.${RESET}"
+}
+
+## run: Run the application locally
+run(){
+    mkdir -p ./database
+    go run ./cmd/server/main.go
+}
+
+## format: Format Go source code
+format(){
+    go fmt ./...
+}
+
+## test: Run BDD tests (requires GeckoDriver running)
+test(){
+    build
+
+   	cd test && export TEMPLATES_DIR="../templates"
+    mkdir -p ./database
+    echo -e "${BLUE}Initializing server...${RESET}"
+
+    ../${BIN} &
+    BIN_PID=$!
+
+    if ! pgrep st_server > /dev/null; then
+        killall st_server
+    fi
+
+    if ps -p $BIN_PID > /dev/null; then
+        echo -e "${GREEN}Server started successfully with PID ${BIN_PID}${RESET}"
+    else
+        echo -e "${RED}Failed to start the server${RESET}"
+        exit 1
+    fi
+
+    if ! pgrep geckodriver > /dev/null; then
+        echo -e "${RED}GeckoDriver is not running!${RESET}"
+        kill $BIN_PID
+        exit 1
+    fi
+
+    go test -v -timeout 30m;
+    rm -f urlshortener.db
+    kill $BIN_PID
+    unset TEMPLATES_DIR
+}
+
+
+handler(){
+    case "${1:-help}" in
+        install-deps)
+            install_deps;;
+        build)
+            build;;
+        run)
+            run;;
+        test)
+            test;;
+        help)
+            help;;
+        format)
+            format;;
+        *)
+            echo -e "${RED}Unknown command: $1";;
+    esac
+}
+
+handler "$@"

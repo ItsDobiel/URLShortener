@@ -36,3 +36,6 @@ go.work.sum
 *.db-shm
 *.db-wal
 
+
+# Server binary
+st_server
