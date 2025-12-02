@@ -8,7 +8,10 @@
         <link rel="stylesheet" href="css/dracula.css" />
     </head>
     <body>
-        <div class="progress-bar" id="progressBar"></div>
+        <div class="mobile-warning">
+            <h2>Unsupported Device</h2>
+            <p>Please use a desktop computer to view this slide show.</p>
+        </div>
 
         <div class="keyboard-hint" id="keyboardHint">
             <kbd>←</kbd> <kbd>→</kbd> Navigate | <kbd>F</kbd> Fullscreen |
@@ -26,9 +29,27 @@
 
         <section id="url-shortener-architecture" class="slide">
             <h1>URL Shortener Architecture</h1>
-            <h2 id="how-short-codes-are-generated">
-                How Short Codes Are Generated
-            </h2>
+            <h2 id="why-url-shortener">Why URL Shortener?</h2>
+            <p>This project uses a URL shortener as the subject because:</p>
+            <ul>
+                <li>
+                    <strong>Easy to Implement</strong>: The core logic is
+                    straightforward and easy to understand
+                </li>
+                <li>
+                    <strong>Good Test Cases</strong>: Provides excellent
+                    scenarios for demonstrating BDD testing:
+                    <ul>
+                        <li>URL validation and normalization</li>
+                        <li>Input validation and error handling</li>
+                        <li>Duplicate detection</li>
+                        <li>Various edge cases</li>
+                    </ul>
+                </li>
+            </ul>
+        </section>
+        <section id="how-short-codes-are-generated" class="slide">
+            <h2>How Short Codes Are Generated</h2>
             <h3 id="the-algorithm">The Algorithm</h3>
             <p>
                 Our URL shortener uses a <strong>hash-based approach</strong> to

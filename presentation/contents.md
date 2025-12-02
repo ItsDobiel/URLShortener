@@ -7,6 +7,19 @@ date: "4041 Semester @ SRBIAU"
 
 # URL Shortener Architecture
 
+## Why URL Shortener?
+
+This project uses a URL shortener as the subject because:
+
+- **Easy to Implement**: The core logic is straightforward and easy to understand
+- **Good Test Cases**: Provides excellent scenarios for demonstrating BDD testing:
+  - URL validation and normalization
+  - Input validation and error handling
+  - Duplicate detection
+  - Various edge cases
+
+---
+
 ## How Short Codes Are Generated
 
 ### The Algorithm
