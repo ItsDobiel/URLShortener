@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>A BDD Approach to Testing a URL Shortener in Go</title>
+        <link rel="stylesheet" href="css/main.css" />
+        <link rel="stylesheet" href="css/dracula.css" />
+    </head>
+    <body>
+        <div class="progress-bar" id="progressBar"></div>
+
+        <div class="keyboard-hint" id="keyboardHint">
+            <kbd>←</kbd> <kbd>→</kbd> Navigate | <kbd>F</kbd> Fullscreen |
+            <kbd>?</kbd> Help
+        </div>
+
+        <div class="slide active title-slide" data-slide-number="">
+            <h1>A BDD Approach to Testing a URL Shortener in Go</h1>
+            <div class="subtitle">
+                https://github.com/ItsDobiel/URLShortener
+            </div>
+            <div class="author">Kiarash Ghorbani</div>
+            <div class="date">4041 Semester @ SRBIAU</div>
+        </div>
+
+        <section id="url-shortener-architecture" class="slide">
+            <h1>URL Shortener Architecture</h1>
+            <h2 id="how-short-codes-are-generated">
+                How Short Codes Are Generated
+            </h2>
+            <h3 id="the-algorithm">The Algorithm</h3>
+            <p>
+                Our URL shortener uses a <strong>hash-based approach</strong> to
+                generate short codes:
+            </p>
+            <ol type="1">
+                <li>
+                    <strong>Input</strong>: Original URL (e.g.,
+                    <code>https://example.com/very/long/path</code>)
+                </li>
+                <li>
+                    <strong>Hash Function</strong>: SHA-256 cryptographic hash
+                </li>
+                <li><strong>Encoding</strong>: Base64 URL-safe encoding</li>
+                <li><strong>Truncation</strong>: Take first 7 characters</li>
+            </ol>
+            <pre class="go"><code>// Pseudocode
+hash = SHA256(normalized_url + &quot;:&quot; + attempt_number)
+encoded = Base64URLEncode(hash)
+shortCode = encoded[0:7]  // e.g., &quot;dmOa-QD&quot;</code></pre>
+        </section>
+        <section id="why-sha-256-and-base64" class="slide">
+            <h2>Why SHA-256 and Base64?</h2>
+            <h3 id="sha-256-hash-function">SHA-256 Hash Function</h3>
+            <ul>
+                <li>
+                    <strong>Deterministic</strong>: Same input → same output
+                </li>
+                <li>
+                    <strong>Uniform distribution</strong>: Minimizes collisions
+                </li>
+                <li>
+                    <strong>One-way</strong>: Cannot reverse to get original URL
+                </li>
+                <li><strong>Fast</strong>: Efficient computation</li>
+            </ul>
+            <h3 id="base64-url-safe-encoding">Base64 URL-Safe Encoding</h3>
+            <ul>
+                <li>
+                    <strong>Compact</strong>: 64 characters (A-Z, a-z, 0-9, -,
+                    _)
+                </li>
+                <li>
+                    <strong>URL-safe</strong>: No special characters that need
+                    escaping
+                </li>
+                <li><strong>Efficient</strong>: 6 bits per character</li>
+                <li>
+                    <strong>7 characters</strong>: ~64^7 = 4 trillion possible
+                    combinations
+                </li>
+            </ul>
+            <p>
+                Note that in BDD Testing we don’t need this infomation, It is
+                only provided as extra knowledge.
+            </p>
+        </section>
+        <section id="url-normalization" class="slide">
+            <h1>URL Normalization</h1>
+            <h2 id="why-normalize-urls">Why Normalize URLs?</h2>
+            <h3 id="the-problem">The Problem</h3>
+            <p>Users might enter the same URL in different ways:</p>
+            <ul>
+                <li><code>HTTPS://GITHUB.COM/mozilla/</code></li>
+                <li><code>https://github.com/mozilla</code></li>
+                <li><code>https://GitHub.com/mozilla/</code></li>
+            </ul>
+            <p>
+                Without normalization →
+                <strong>different short codes</strong> for the
+                <strong>same resource</strong>!
+            </p>
+        </section>
+        <section id="normalization-examples" class="slide">
+            <h2>Normalization Examples</h2>
+            <h3 id="before-and-after">Before and After</h3>
+            <table>
+                <colgroup>
+                    <col style="width: 44%" />
+                    <col style="width: 55%" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Original URL</th>
+                        <th>Normalized URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>HTTPS://GITHUB.COM/mozilla/</code></td>
+                        <td><code>https://github.com/mozilla</code></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <code
+                                >https://SRB.IAU.ir/library/fa/page/6151/</code
+                            >
+                        </td>
+                        <td>
+                            <code>https://srb.iau.ir/library/fa/page/6151</code>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                <strong>Result</strong>: All variations →
+                <strong>same short code</strong>
+            </p>
+            <p>
+                <strong>Key</strong>: Protocol and domain are case-insensitive,
+                path is case-sensitive
+            </p>
+        </section>
+        <section id="collision-handling" class="slide">
+            <h1>Collision Handling</h1>
+            <h2 id="what-is-a-hash-collision">What is a Hash Collision?</h2>
+            <h3 id="the-problem-1">The Problem</h3>
+            <p>Two different URLs → <strong>same short code</strong></p>
+            <pre><code>URL1: &quot;https://github.com/ItsDobiel/URLShortener&quot; → Hash → &quot;abc1234&quot;
+URL2: &quot;https://srb.iau.ir/library/fa/page/6151&quot;   → Hash → &quot;abc1234&quot; ❌</code></pre>
+            <p>
+                While rare with SHA-256, collisions are still possible! Also
+                keep in mind We can’t test this since We don’t have urls that
+                produce the same SHA-256 hash!
+            </p>
+        </section>
+        <section id="behavior-driven-development-bdd" class="slide">
+            <h1>Behavior-Driven Development (BDD)</h1>
+            <h2 id="what-is-bdd">What is BDD?</h2>
+            <h3 id="definition">Definition</h3>
+            <p>
+                <strong>Behavior-Driven Development</strong> is a software
+                development approach that:
+            </p>
+            <ul>
+                <li>
+                    Uses <strong>plain English</strong> to describe system
+                    behavior
+                </li>
+                <li>Focuses on <strong>user stories</strong> and scenarios</li>
+                <li>
+                    Enables <strong>collaboration</strong> between developers,
+                    testers, and stakeholders
+                </li>
+                <li>Serves as <strong>living documentation</strong></li>
+            </ul>
+            <h3 id="key-principle">Key Principle</h3>
+            <blockquote>
+                <p>
+                    “Tests should describe <strong>what</strong> the system
+                    does, not <strong>how</strong> it does it”
+                </p>
+            </blockquote>
+        </section>
+        <section id="gherkin-syntax" class="slide">
+            <h2>Gherkin Syntax</h2>
+            <h3 id="the-language-of-bdd">The Language of BDD</h3>
+            <p>
+                <strong>Gherkin</strong> is a plain-text language with keywords:
+            </p>
+            <ul>
+                <li><code>Feature</code>: High-level description</li>
+                <li>
+                    <code>Background</code>: Steps to be executed within each
+                    Scenario
+                </li>
+                <li><code>Scenario Outline</code>: Specific test case</li>
+                <li><code>Given</code>: Initial context/state</li>
+                <li><code>When</code>: Action/event</li>
+                <li><code>Then</code>: Expected outcome</li>
+                <li><code>And</code>: Additional conditions</li>
+            </ul>
+        </section>
+        <section id="gherkin-example" class="slide">
+            <h2>Gherkin Example</h2>
+            <h3 id="basic-structure">Basic Structure</h3>
+            <pre class="gherkin"><code>Feature: URL Shortener
+  As a user
+  I want to shorten long URLs
+  So that I can share them easily
+
+  Background:
+    Given the URL shortener service is running
+    And I am on the home page
+
+  Scenario Outline: Shorten valid URLs
+    When I enter the URL &quot;https://github.com/ItsDobiel/URLShortener/blob/main/README.md&quot;
+    And I submit the form
+    Then I should see a success message
+    And I should see a shortened URL
+    And the shortened URL should be valid
+    And the shortned URL must redirect me to &quot;https://github.com/ItsDobiel/URLShortener/blob/main/README.md&quot;</code></pre>
+        </section>
+        <section id="scenario-outline-with-examples" class="slide">
+            <h2>Scenario Outline with Examples</h2>
+            <h3 id="data-driven-testing">Data-Driven Testing</h3>
+            <p>We will update the previous example!</p>
+            <pre class="gherkin"><code>Scenario Outline: Shorten valid URLs
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should see a success message
+  And I should see a shortened URL
+  And the shortened URL should be valid
+  And the shortned URL must redirect me to &quot;&lt;url&gt;&quot;
+
+  Examples:
+    | url                                                           |
+    | https://github.com/ItsDobiel/URLShortener/blob/main/README.md |
+    | https://cucumber.io/docs/bdd/                                 |
+</code></pre>
+            <p>
+                <strong>Result</strong>: Test runs <strong>twice</strong> with
+                different data
+            </p>
+        </section>
+        <section id="our-test-scenarios" class="slide">
+            <h1>Our Test Scenarios</h1>
+            <h2 id="based-on-url-shortener-features">
+                Based on URL Shortener Features
+            </h2>
+            <h3 id="shortened-url-testing">1. Shortened URL Testing</h3>
+            <pre class="gherkin"><code>Scenario Outline: Shorten valid URLs
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should see a success message
+  And I should see a shortened URL
+  And the shortened URL should be valid
+  And the shortned URL must redirect me to &quot;&lt;url&gt;&quot;
+
+  Examples:
+    | url                                                           |
+    | https://github.com/ItsDobiel/URLShortener/blob/main/README.md |
+    | https://cucumber.io/docs/bdd/                                 |</code></pre>
+            <p>
+                <strong>Tests</strong>: Tests the generation of a functional
+                shortened url and opens it to verify redirection.
+            </p>
+        </section>
+        <section id="normalization-testing" class="slide">
+            <h2>2. Normalization Testing</h2>
+            <pre
+                class="gherkin"
+            ><code>Scenario Outline: URL normalization - trailing slashes
+  When I enter the URL &quot;&lt;url_with_slash&gt;&quot;
+  And I submit the form
+  Then I should see a shortened URL
+  When I enter the URL &quot;&lt;url_without_slash&gt;&quot;
+  And I submit the form
+  Then I should receive the same short code as before
+
+  Examples:
+    | url_with_slash                             | url_without_slash                         |
+    | https://gorm.io/docs/                      | https://gorm.io/docs                      |
+    | https://github.com/ItsDobiel/URLShortener/ | https://github.com/ItsDobiel/URLShortener |
+
+Scenario Outline: URL normalization - case insensitivity in protocol and domain
+  When I enter the URL &quot;&lt;url_variant1&gt;&quot;
+  And I submit the form
+  Then I should see a shortened URL
+  When I enter the URL &quot;&lt;url_variant2&gt;&quot;
+  And I submit the form
+  Then I should receive the same short code as before
+
+  Examples:
+    | url_variant1                              | url_variant2                              |
+    | HTTPS://GiThUb.CoM/ItsDobiel/URLShortener | https://github.com/ItsDobiel/URLShortener |
+    | httpS://docs.PODMAN.io/en/latest          | https://docs.podman.io/en/latest          |
+</code></pre>
+            <p>
+                <strong>Tests</strong>: Protocol/domain normalization, duplicate
+                detection
+            </p>
+        </section>
+        <section id="collision-handling-testing" class="slide">
+            <h2>3. Collision Handling Testing</h2>
+            <pre
+                class="gherkin"
+            ><code>Scenario Outline: Duplicate URL returns same short code
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should see a shortened URL
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should receive the same short code as before
+
+  Examples:
+    | url                                                |
+    | https://www.gnu.org/software/bash/manual/bash.html |
+    | https://www.mozilla.org/en-US/about/manifesto      |</code></pre>
+            <p><strong>Tests</strong>: Database lookup, collision avoidance</p>
+        </section>
+        <section
+            id="handling-query-parameters-fragments-and-special-characters"
+            class="slide"
+        >
+            <h2>
+                4. Handling Query Parameters, Fragments and Special Characters
+            </h2>
+            <pre
+                class="gherkin"
+            ><code>Scenario Outline: Shorten URLs with query parameters, fragments and special characters
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should see a success message
+  And I should see a shortened URL
+
+  Examples:
+    | url                                                                |
+    | https://example.com/search?q=Price%20of%20US%20%24&amp;page=2#results  |
+    | https://example.com/post?uuid=c3191902-bbef-4434-b043-e2cceedcc227 |
+</code></pre>
+            <p><strong>Tests</strong>: Shortened url generation</p>
+        </section>
+        <section id="validation-testing" class="slide">
+            <h2>5. Validation Testing</h2>
+            <pre class="gherkin"><code>Scenario Outline: Reject invalid URLs
+  When I enter the URL &quot;&lt;invalid_url&gt;&quot;
+  And I submit the form
+  Then I should see an error message
+
+  Examples:
+    | invalid_url             |
+    | not-a-valid-url         |
+    | ftp://example.com/file  |
+    | javascript:alert(&#39;xss&#39;) |
+    | file:///etc/passwd      |
+    | /../../../etc/passwd    |
+    | /invalid@chars!         |
+    | /short code with spaces |</code></pre>
+            <p><strong>Tests</strong>: Input validation, security</p>
+        </section>
+        <section id="undefined-short-code-testing" class="slide">
+            <h2>6. Undefined Short Code Testing</h2>
+            <pre
+                class="gherkin"
+            ><code>Scenario Outline: Accessing non-existent short code
+  When I navigate to &quot;&lt;path&gt;&quot;
+  Then I should see an error page
+  And the error should indicate the short code was not found
+
+  Examples:
+    | path        |
+    | /AuEcAowlXq |
+    | /XXXXXXX    |</code></pre>
+            <p><strong>Tests</strong>: Handling of undefined short codes</p>
+        </section>
+        <section id="short-code-format-validation" class="slide">
+            <h2>5. Short Code Format Validation</h2>
+            <pre
+                class="gherkin"
+            ><code>Scenario Outline: Generated short code meets requirements
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should see a shortened URL
+  And the short code should be alphanumeric with allowed characters
+  And the short code length should match the configured length
+
+  Examples:
+    | url                                             |
+    | https://github.com/ItsDobiel/URLShortener       |
+    | https://docs.fedoraproject.org/en-US/containers |</code></pre>
+            <p>
+                <strong>Tests</strong>: Base64 encoding, configured length (7
+                chars)
+            </p>
+        </section>
+        <section id="testing-in-go-with-godog" class="slide">
+            <h1>Testing in Go with Godog</h1>
+            <h2 id="what-is-godog">What is Godog?</h2>
+            <h3 id="bdd-framework-for-go">BDD Framework for Go</h3>
+            <p><strong>Godog</strong> is the Go implementation of Cucumber:</p>
+            <ul>
+                <li>Reads <code>.feature</code> files written in Gherkin</li>
+                <li>Maps steps to Go functions</li>
+                <li>Integrates with Go’s <code>*testing.T</code></li>
+                <li>Provides detailed test reports</li>
+            </ul>
+            <pre
+                class="go"
+            ><code>import &quot;github.com/cucumber/godog&quot;</code></pre>
+        </section>
+        <section id="project-structure" class="slide">
+            <h2>Project Structure</h2>
+            <h3 id="test-organization">Test Organization</h3>
+            <pre><code>test/
+├── features/
+│   └── url_shortener.feature    # Gherkin scenarios
+└── url_shortener_test.go        # Go test code</code></pre>
+            <p>
+                <strong>Separation of concerns</strong>: - Feature files →
+                <strong>What</strong> to test (business logic) - Go code →
+                <strong>How</strong> to test (implementation)
+            </p>
+        </section>
+        <section id="step-1-define-feature-file" class="slide">
+            <h2>Step 1: Define Feature File</h2>
+            <h3 id="example-scenario">Example Scenario</h3>
+            <pre class="gherkin"><code>Scenario Outline: Shorten valid URLs
+  When I enter the URL &quot;&lt;url&gt;&quot;
+  And I submit the form
+  Then I should see a success message
+  And I should see a shortened URL
+  And the shortened URL should be valid
+  And the shortned URL must redirect me to &quot;&lt;url&gt;&quot;
+
+  Examples:
+    | url                                                           |
+    | https://github.com/ItsDobiel/URLShortener/blob/main/README.md |
+    | https://cucumber.io/docs/bdd/                                 |</code></pre>
+        </section>
+        <section id="step-2-create-test-entry-point" class="slide">
+            <h2>Step 2: Create Test Entry Point</h2>
+            <h3 id="main-test-function">Main Test Function</h3>
+            <pre class="go"><code>func TestFeatures(t *testing.T) {
+    // Configure godog test suite
+    suite := godog.TestSuite{
+        ScenarioInitializer: initializeScenario,
+        Options: &amp;godog.Options{
+            Format:   &quot;pretty&quot;,
+            Paths:    []string{&quot;features&quot;},
+            TestingT: t,  // Integration with Go testing
+        },
+    }
+
+    // Run the suite
+    if suite.Run() != 0 {
+        t.Fatal(&quot;tests failed&quot;)
+    }
+}</code></pre>
+        </section>
+        <section id="step-3-register-step-definitions" class="slide">
+            <h2>Step 3: Register Step Definitions</h2>
+            <h3 id="mapping-gherkin-to-go">Mapping Gherkin to Go</h3>
+            <pre
+                class="go"
+            ><code>func initializeScenario(ctx *godog.ScenarioContext) {
+    // Register step definitions
+    ctx.Step(`^I enter the URL &quot;([^&quot;]*)&quot;$`, stepEnterURL)
+    ctx.Step(`^I submit the form$`, stepSubmitForm)
+    ctx.Step(`^I should see a success message$`, stepSeeSuccessMessage)
+    ctx.Step(`^I should see a shortened URL$`, stepSeeShortenedURL)
+    ctx.Step(`^the shortened URL should be valid$`, stepShortenedURLValid)
+    ctx.Step(`^the shortned URL must redirect me to &quot;([^&quot;]*)&quot;$`, stepNavigateToShortenedURL)
+}</code></pre>
+            <p><strong>Note</strong>: Regular expressions capture parameters</p>
+        </section>
+        <section id="step-4-implement-step-functions" class="slide">
+            <h2>Step 4: Implement Step Functions</h2>
+            <h3 id="example-i-enter-the-url">Example: “I enter the URL”</h3>
+            <pre class="go"><code>func stepEnterURL(url string) error {
+    fmt.Printf(&quot;   Entering URL: %s\n&quot;, url)
+
+    currentURL, _ := testCtx.webDriver.CurrentURL()
+    if !strings.HasSuffix(currentURL, &quot;/&quot;) || strings.Contains(currentURL, &quot;error&quot;) {
+        fmt.Println(&quot;   Navigating back to home page...&quot;)
+        testCtx.webDriver.Get(testCtx.baseURL)
+    }
+
+    urlInput, err := testCtx.webDriver.FindElement(selenium.ByID, &quot;url&quot;)
+    if err != nil {
+        return fmt.Errorf(&quot;URL input not found: %w&quot;, err)
+    }
+
+    urlInput.Clear()
+    err = urlInput.SendKeys(url)
+
+    return err
+}</code></pre>
+            <p>
+                <strong>Parameter</strong>: <code>url</code> is captured from
+                Gherkin step
+            </p>
+        </section>
+        <section id="complete-example-reject-invalid-urls" class="slide">
+            <h2>Complete Example: Reject Invalid URLs</h2>
+            <h3 id="feature-file">Feature File</h3>
+            <pre class="gherkin"><code>Scenario Outline: Reject invalid URLs
+  When I enter the URL &quot;&lt;invalid_url&gt;&quot;
+  And I submit the form
+  Then I should see an error message
+
+  Examples:
+    | invalid_url             |
+    | not-a-valid-url         |
+    | ftp://example.com/file  |
+    | javascript:alert(&#39;xss&#39;) |
+    | file:///etc/passwd      |
+    | /../../../etc/passwd    |
+    | /invalid@chars!         |
+    | /short code with spaces |</code></pre>
+        </section>
+        <section id="step-implementations" class="slide">
+            <h3>Step Implementations</h3>
+            <p>The error handling code is redacted for simplicity.</p>
+            <pre class="go"><code>func stepEnterURL(url string) error {
+    urlInput, err := testCtx.webDriver.FindElement(selenium.ByID, &quot;url&quot;)
+    urlInput.Clear()
+    return err
+}
+
+func stepSubmitForm() error {
+    button, _ := testCtx.webDriver.FindElement(selenium.ByID, &quot;submit&quot;)
+    button.Click()
+    return nil
+}
+
+func stepSeeSuccessMessage() error {
+    pageSource, _ := testCtx.webDriver.PageSource()
+    if strings.Contains(pageSource, &quot;Success&quot;) || strings.Contains(pageSource, &quot;✨&quot;) {
+        return nil
+    }
+
+    elements, _ := testCtx.webDriver.FindElements(selenium.ByID, &quot;result&quot;)
+    if len(elements) &gt; 0 {
+        text, _ := elements[0].Text()
+        if strings.Contains(text, &quot;Success&quot;) {
+            return nil
+        }
+    }
+}</code></pre>
+        </section>
+        <section id="step-implementation-continued" class="slide">
+            <h3>Step Implementation (continued)</h3>
+            <pre class="go"><code>func stepSeeShortenedURL() error {
+    links, _ := testCtx.webDriver.FindElements(selenium.ByID, &quot;shortened&quot;)
+    for _, link := range links {
+        href, _ := link.GetAttribute(&quot;href&quot;)
+        if strings.Contains(href, &quot;http://localhost:8080/&quot;) &amp;&amp; !strings.HasSuffix(href, &quot;/&quot;) {
+            parts := strings.Split(href, &quot;/&quot;)
+            testCtx.lastShortCode = strings.TrimSpace(parts[len(parts)-1])
+            return nil
+        }
+    }
+
+    return fmt.Errorf(&quot;shortened URL not found&quot;)
+}</code></pre>
+        </section>
+        <section id="test-execution-flow" class="slide">
+            <h2>Test Execution Flow</h2>
+            <h3 id="what-happens-when-you-run-go-test-....">
+                What Happens When You Run <code>go test ./...</code>
+            </h3>
+            <ol type="1">
+                <li><strong>Build</strong>: Application binary is compiled</li>
+                <li>
+                    <strong>Start GeckoDriver</strong>: GeckoDriver runs on port
+                    4444
+                </li>
+                <li>
+                    <strong>Start Server</strong>: Application runs on
+                    localhost:8080
+                </li>
+                <li>
+                    <strong>Parse Features</strong>: Godog reads
+                    <code>.feature</code> files
+                </li>
+                <li>
+                    <strong>For each scenario</strong>:
+                    <ul>
+                        <li>Execute <code>Given</code> steps (setup)</li>
+                        <li>Execute <code>When</code> steps (actions)</li>
+                        <li>Execute <code>Then</code> steps (assertions)</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Cleanup</strong>: Stop GeckoDriver, server. remove
+                    test database.
+                </li>
+                <li><strong>Report</strong>: Display pass/fail results</li>
+            </ol>
+        </section>
+        <section id="test-output-example" class="slide">
+            <h2>Test Output Example</h2>
+            <h3 id="console-output">Console Output</h3>
+            <pre><code>...
+...
+...
+
+21 scenarios (21 passed)
+135 steps (135 passed)
+</code></pre>
+        </section>
+        <section id="benefits-of-this-approach" class="slide">
+            <h1>Benefits of This Approach</h1>
+            <h2 id="why-bdd-with-godog">Why BDD with Godog?</h2>
+            <h3 id="readable-tests">1. <strong>Readable Tests</strong></h3>
+            <ul>
+                <li>Non-technical stakeholders can understand</li>
+                <li>Feature files serve as documentation</li>
+            </ul>
+            <h3 id="behavior-focused">2. <strong>Behavior-Focused</strong></h3>
+            <ul>
+                <li>Tests describe user behavior, not implementation</li>
+                <li>Tests remain stable even if code changes</li>
+            </ul>
+            <h3 id="comprehensive-coverage">
+                3. <strong>Comprehensive Coverage</strong>
+            </h3>
+            <ul>
+                <li>Hash function testing</li>
+                <li>Normalization verification</li>
+                <li>Collision handling</li>
+                <li>Input validation</li>
+            </ul>
+        </section>
+        <section id="integration-benefits" class="slide">
+            <h2>Integration Benefits</h2>
+            <h3 id="real-browser-testing">
+                4. <strong>Real Browser Testing</strong>
+            </h3>
+            <ul>
+                <li>Uses actual Firefox browser</li>
+                <li>Tests real user interactions</li>
+                <li>Catches UI/UX issues</li>
+            </ul>
+            <h3 id="automated-everything">
+                5. <strong>Automated Everything</strong>
+            </h3>
+            <ul>
+                <li>Server starts automatically</li>
+                <li>GeckoDriver managed by test code</li>
+                <li>Clean setup and teardown</li>
+            </ul>
+            <h3 id="cicd-ready">6. <strong>CI/CD Ready</strong></h3>
+            <ul>
+                <li>Runs in GitHub Actions</li>
+                <li>Generates coverage reports</li>
+                <li>Publishable test results</li>
+            </ul>
+        </section>
+        <section id="test-statistics" class="slide">
+            <h1>Test Statistics</h1>
+            <h2 id="test-coverage">Test Coverage</h2>
+            <h3 id="scenario-types-21-test-cases">
+                7 Scenario Types, 21 Test Cases
+            </h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Scenarios</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Valid URLs</td>
+                        <td>2</td>
+                        <td>Hash generation</td>
+                    </tr>
+                    <tr>
+                        <td>Normalization</td>
+                        <td>4</td>
+                        <td>URL normalization</td>
+                    </tr>
+                    <tr>
+                        <td>Duplicates</td>
+                        <td>2</td>
+                        <td>Collision handling</td>
+                    </tr>
+                    <tr>
+                        <td>Special chars</td>
+                        <td>2</td>
+                        <td>Encoding</td>
+                    </tr>
+                    <tr>
+                        <td>Invalid URLs</td>
+                        <td>7</td>
+                        <td>Validation</td>
+                    </tr>
+                    <tr>
+                        <td>Non-existent</td>
+                        <td>2</td>
+                        <td>Error handling</td>
+                    </tr>
+                    <tr>
+                        <td>Format validation</td>
+                        <td>2</td>
+                        <td>Compliance</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p><strong>Total execution time</strong>: ~10-30 seconds</p>
+        </section>
+        <section id="automate-test-execution" class="slide">
+            <h1>Automate Test Execution</h1>
+            <h2 id="github-actions">Github Actions</h2>
+            <pre class="yaml"><code>...
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust and Cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Install Geckodriver via Cargo
+        run: |
+          cargo install geckodriver
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: &quot;1.25.4&quot;
+      - name: Test
+        run: |
+          cd test
+          go test -v</code></pre>
+        </section>
+        <section id="questions" class="slide">
+            <h1>Questions?</h1>
+            <h2 id="project-repository">Project Repository</h2>
+            <p>
+                <strong>GitHub</strong>:
+                https://github.com/ItsDobiel/URLShortener
+            </p>
+            <p><strong>Documentation</strong>:</p>
+            <ul>
+                <li><code>README.md</code> - Project overview</li>
+                <li>
+                    <code>presentation/contents.md</code> - This presentation
+                </li>
+            </ul>
+            <p><strong>Try it yourself</strong>:</p>
+            <pre
+                class="bash"
+            ><code>git clone https://github.com/ItsDobiel/URLShortener.git
+cd urlshortener
+make test ./...</code></pre>
+        </section>
+        <section id="the-end" class="slide">
+            <h1>The End!</h1>
+            <h2 id="resources">Resources</h2>
+            <p><strong>Course</strong>: Software Testing</p>
+            <p><strong>Technologies Used for Testing</strong>:</p>
+            <ul>
+                <li>Go</li>
+                <li>Godog (BDD framework)</li>
+                <li>Selenium</li>
+                <li>GeckoDriver</li>
+            </ul>
+            <p><strong>References</strong>:</p>
+            <ul>
+                <li>Godog: https://github.com/cucumber/godog</li>
+                <li>Gherkin: https://cucumber.io/docs/gherkin</li>
+            </ul>
+        </section>
+
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="changeSlide(-1)">
+                ← Previous
+            </button>
+            <button class="nav-button" id="nextBtn" onclick="changeSlide(1)">
+                Next →
+            </button>
+        </div>
+
+        <script src="js/main.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/gherkin.min.js"></script>
+        <script>
+            hljs.highlightAll();
+        </script>
+    </body>
+</html>

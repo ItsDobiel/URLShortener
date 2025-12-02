@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>A BDD Approach to Testing a URL Shortener in Go</title>
+        <link rel="stylesheet" href="css/main.css" />
+        <link rel="stylesheet" href="css/dracula.css" />
+    </head>
+    <body>
+        <div class="progress-bar" id="progressBar"></div>
+
+        <div class="keyboard-hint" id="keyboardHint">
+            <kbd>←</kbd> <kbd>→</kbd> Navigate | <kbd>F</kbd> Fullscreen |
+            <kbd>?</kbd> Help
+        </div>
+
+        <div class="slide active title-slide" data-slide-number="">
+            <h1>$if(title)$$title$$endif$</h1>
+            $if(subtitle)$
+            <div class="subtitle">$subtitle$</div>
+            $endif$ $if(author)$
+            <div class="author">$author$</div>
+            $endif$ $if(date)$
+            <div class="date">$date$</div>
+            $endif$
+        </div>
+
+        $body$
+
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="changeSlide(-1)">
+                ← Previous
+            </button>
+            <button class="nav-button" id="nextBtn" onclick="changeSlide(1)">
+                Next →
+            </button>
+        </div>
+
+        <script src="js/main.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/gherkin.min.js"></script>
+        <script>
+            hljs.highlightAll();
+        </script>
+    </body>
+</html>
