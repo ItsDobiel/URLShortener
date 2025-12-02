@@ -58,7 +58,12 @@
             <ol type="1">
                 <li>
                     <strong>Input</strong>: Original URL (e.g.,
-                    <code>https://example.com/very/long/path</code>)
+                    <code>httpS://docs.PODMAN.io/en/latest/</code>)
+                </li>
+                <li>
+                    <strong>URL Normalization</strong>: Case-insensitive
+                    protocols/domains, trailing slashes removal (e.g.,
+                    <code>https://docs.podman.io/en/latest</code>)
                 </li>
                 <li>
                     <strong>Hash Function</strong>: SHA-256 cryptographic hash
@@ -67,6 +72,7 @@
                 <li><strong>Truncation</strong>: Take first 7 characters</li>
             </ol>
             <pre class="go"><code>// Pseudocode
+normalized_url = NormalizeURL(input_url)
 hash = SHA256(normalized_url + &quot;:&quot; + attempt_number)
 encoded = Base64URLEncode(hash)
 shortCode = encoded[0:7]  // e.g., &quot;dmOa-QD&quot;</code></pre>

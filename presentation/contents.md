@@ -26,13 +26,15 @@ This project uses a URL shortener as the subject because:
 
 Our URL shortener uses a **hash-based approach** to generate short codes:
 
-1. **Input**: Original URL (e.g., `https://example.com/very/long/path`)
-2. **Hash Function**: SHA-256 cryptographic hash
-3. **Encoding**: Base64 URL-safe encoding
-4. **Truncation**: Take first 7 characters
+1. **Input**: Original URL (e.g., `httpS://docs.PODMAN.io/en/latest/`)
+2. **URL Normalization**: Case-insensitive protocols/domains, trailing slashes removal (e.g., `https://docs.podman.io/en/latest`)
+3. **Hash Function**: SHA-256 cryptographic hash
+4. **Encoding**: Base64 URL-safe encoding
+5. **Truncation**: Take first 7 characters
 
 ```go
 // Pseudocode
+normalized_url = NormalizeURL(input_url)
 hash = SHA256(normalized_url + ":" + attempt_number)
 encoded = Base64URLEncode(hash)
 shortCode = encoded[0:7]  // e.g., "dmOa-QD"
