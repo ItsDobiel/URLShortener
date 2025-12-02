@@ -242,7 +242,7 @@ Scenario Outline: URL normalization - case insensitivity in protocol and domain
 
 ---
 
-## 3. Collision Handling Testing
+## 3. Duplicate Handling Testing
 
 ```gherkin
 Scenario Outline: Duplicate URL returns same short code
