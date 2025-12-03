@@ -403,7 +403,7 @@ Scenario Outline: URL normalization - case insensitivity in protocol and domain
             <p><strong>Tests</strong>: Handling of undefined short codes</p>
         </section>
         <section id="short-code-format-validation" class="slide">
-            <h2>5. Short Code Format Validation</h2>
+            <h2>7. Short Code Format Validation</h2>
             <pre
                 class="gherkin"
             ><code>Scenario Outline: Generated short code meets requirements
@@ -453,18 +453,17 @@ Scenario Outline: URL normalization - case insensitivity in protocol and domain
         <section id="step-1-define-feature-file" class="slide">
             <h2>Step 1: Define Feature File</h2>
             <h3 id="example-scenario">Example Scenario</h3>
-            <pre class="gherkin"><code>Scenario Outline: Shorten valid URLs
-  When I enter the URL &quot;&lt;url&gt;&quot;
-  And I submit the form
-  Then I should see a success message
-  And I should see a shortened URL
-  And the shortened URL should be valid
-  And the shortned URL must redirect me to &quot;&lt;url&gt;&quot;
+            <pre
+                class="gherkin"
+            ><code>Scenario Outline: Accessing non-existent short code
+  When I navigate to &quot;&lt;path&gt;&quot;
+  Then I should see an error page
+  And the error should indicate the short code was not found
 
   Examples:
-    | url                                                           |
-    | https://github.com/ItsDobiel/URLShortener/blob/main/README.md |
-    | https://cucumber.io/docs/bdd/                                 |</code></pre>
+    | path        |
+    | /AuEcAowlXq |
+    | /XXXXXXX    |</code></pre>
         </section>
         <section id="step-2-create-test-entry-point" class="slide">
             <h2>Step 2: Create Test Entry Point</h2>
@@ -493,39 +492,21 @@ Scenario Outline: URL normalization - case insensitivity in protocol and domain
                 class="go"
             ><code>func initializeScenario(ctx *godog.ScenarioContext) {
     // Register step definitions
-    ctx.Step(`^I enter the URL &quot;([^&quot;]*)&quot;$`, stepEnterURL)
-    ctx.Step(`^I submit the form$`, stepSubmitForm)
-    ctx.Step(`^I should see a success message$`, stepSeeSuccessMessage)
-    ctx.Step(`^I should see a shortened URL$`, stepSeeShortenedURL)
-    ctx.Step(`^the shortened URL should be valid$`, stepShortenedURLValid)
-    ctx.Step(`^the shortned URL must redirect me to &quot;([^&quot;]*)&quot;$`, stepNavigateToShortenedURL)
+    ctx.Step(`^I navigate to &quot;([^&quot;]*)&quot;$`, stepNavigateTo)
+    ctx.Step(`^I should see an error page$`, stepSeeErrorPage)
+    ctx.Step(`^the error should indicate the short code was not found$`, stepErrorNotFound)
 }</code></pre>
             <p><strong>Note</strong>: Regular expressions capture parameters</p>
         </section>
         <section id="step-4-implement-step-functions" class="slide">
             <h2>Step 4: Implement Step Functions</h2>
             <h3 id="example-i-enter-the-url">Example: “I enter the URL”</h3>
-            <pre class="go"><code>func stepEnterURL(url string) error {
-    fmt.Printf(&quot;   Entering URL: %s\n&quot;, url)
-
-    currentURL, _ := testCtx.webDriver.CurrentURL()
-    if !strings.HasSuffix(currentURL, &quot;/&quot;) || strings.Contains(currentURL, &quot;error&quot;) {
-        fmt.Println(&quot;   Navigating back to home page...&quot;)
-        testCtx.webDriver.Get(testCtx.baseURL)
-    }
-
-    urlInput, err := testCtx.webDriver.FindElement(selenium.ByID, &quot;url&quot;)
-    if err != nil {
-        return fmt.Errorf(&quot;URL input not found: %w&quot;, err)
-    }
-
-    urlInput.Clear()
-    err = urlInput.SendKeys(url)
-
-    return err
+            <pre class="go"><code>func stepNavigateTo(path string) error {
+        err := testCtx.webDriver.Get(testCtx.baseURL + path)
+        return err
 }</code></pre>
             <p>
-                <strong>Parameter</strong>: <code>url</code> is captured from
+                <strong>Parameter</strong>: <code>path</code> is captured from
                 Gherkin step
             </p>
         </section>
@@ -575,22 +556,6 @@ func stepSeeSuccessMessage() error {
             return nil
         }
     }
-}</code></pre>
-        </section>
-        <section id="step-implementation-continued" class="slide">
-            <h3>Step Implementation (continued)</h3>
-            <pre class="go"><code>func stepSeeShortenedURL() error {
-    links, _ := testCtx.webDriver.FindElements(selenium.ByID, &quot;shortened&quot;)
-    for _, link := range links {
-        href, _ := link.GetAttribute(&quot;href&quot;)
-        if strings.Contains(href, &quot;http://localhost:8080/&quot;) &amp;&amp; !strings.HasSuffix(href, &quot;/&quot;) {
-            parts := strings.Split(href, &quot;/&quot;)
-            testCtx.lastShortCode = strings.TrimSpace(parts[len(parts)-1])
-            return nil
-        }
-    }
-
-    return fmt.Errorf(&quot;shortened URL not found&quot;)
 }</code></pre>
         </section>
         <section id="test-execution-flow" class="slide">

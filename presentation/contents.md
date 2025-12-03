@@ -339,7 +339,7 @@ Scenario Outline: Accessing non-existent short code
 
 ---
 
-## 5. Short Code Format Validation
+## 7. Short Code Format Validation
 
 ```gherkin
 Scenario Outline: Generated short code meets requirements
@@ -400,18 +400,15 @@ test/
 ### Example Scenario
 
 ```gherkin
-Scenario Outline: Shorten valid URLs
-  When I enter the URL "<url>"
-  And I submit the form
-  Then I should see a success message
-  And I should see a shortened URL
-  And the shortened URL should be valid
-  And the shortned URL must redirect me to "<url>"
+Scenario Outline: Accessing non-existent short code
+  When I navigate to "<path>"
+  Then I should see an error page
+  And the error should indicate the short code was not found
 
   Examples:
-    | url                                                           |
-    | https://github.com/ItsDobiel/URLShortener/blob/main/README.md |
-    | https://cucumber.io/docs/bdd/                                 |
+    | path        |
+    | /AuEcAowlXq |
+    | /XXXXXXX    |
 ```
 
 ---
@@ -448,12 +445,9 @@ func TestFeatures(t *testing.T) {
 ```go
 func initializeScenario(ctx *godog.ScenarioContext) {
     // Register step definitions
-    ctx.Step(`^I enter the URL "([^"]*)"$`, stepEnterURL)
-    ctx.Step(`^I submit the form$`, stepSubmitForm)
-    ctx.Step(`^I should see a success message$`, stepSeeSuccessMessage)
-    ctx.Step(`^I should see a shortened URL$`, stepSeeShortenedURL)
-    ctx.Step(`^the shortened URL should be valid$`, stepShortenedURLValid)
-   	ctx.Step(`^the shortned URL must redirect me to "([^"]*)"$`, stepNavigateToShortenedURL)
+    ctx.Step(`^I navigate to "([^"]*)"$`, stepNavigateTo)
+    ctx.Step(`^I should see an error page$`, stepSeeErrorPage)
+    ctx.Step(`^the error should indicate the short code was not found$`, stepErrorNotFound)
 }
 ```
 
@@ -466,28 +460,13 @@ func initializeScenario(ctx *godog.ScenarioContext) {
 ### Example: "I enter the URL"
 
 ```go
-func stepEnterURL(url string) error {
-	fmt.Printf("   Entering URL: %s\n", url)
-
-	currentURL, _ := testCtx.webDriver.CurrentURL()
-	if !strings.HasSuffix(currentURL, "/") || strings.Contains(currentURL, "error") {
-		fmt.Println("   Navigating back to home page...")
-		testCtx.webDriver.Get(testCtx.baseURL)
-	}
-
-	urlInput, err := testCtx.webDriver.FindElement(selenium.ByID, "url")
-	if err != nil {
-		return fmt.Errorf("URL input not found: %w", err)
-	}
-
-	urlInput.Clear()
-	err = urlInput.SendKeys(url)
-
-	return err
+func stepNavigateTo(path string) error {
+		err := testCtx.webDriver.Get(testCtx.baseURL + path)
+		return err
 }
 ```
 
-**Parameter**: `url` is captured from Gherkin step
+**Parameter**: `path` is captured from Gherkin step
 
 ---
 
@@ -544,26 +523,6 @@ func stepSeeSuccessMessage() error {
 			return nil
 		}
 	}
-}
-```
-
----
-
-### Step Implementation (continued)
-
-```go
-func stepSeeShortenedURL() error {
-	links, _ := testCtx.webDriver.FindElements(selenium.ByID, "shortened")
-	for _, link := range links {
-		href, _ := link.GetAttribute("href")
-		if strings.Contains(href, "http://localhost:8080/") && !strings.HasSuffix(href, "/") {
-			parts := strings.Split(href, "/")
-			testCtx.lastShortCode = strings.TrimSpace(parts[len(parts)-1])
-			return nil
-		}
-	}
-
-	return fmt.Errorf("shortened URL not found")
 }
 ```
 
